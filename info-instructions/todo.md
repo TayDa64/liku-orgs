@@ -13,7 +13,7 @@
 | P0 | 0 | Architecture Addenda (ChatGPT insights) | 🟢 Complete |
 | P0 | 1 | Skills Schema XSD Enforcement | 🟢 Complete (1.1-1.3) |
 | P0 | 2 | Policy Engine Formalization | 🟢 Complete (2.1-2.4) |
-| P0 | 3 | Vector Memory Index Interface | 🟡 In Progress (3.1-3.5 done) |
+| P0 | 3 | Vector Memory Index Interface | � Complete (3.1-3.6) |
 | P0 | 4 | Verifier Agent Contract | 🟢 Complete |
 | P1 | 5 | System Instruction XML (Per Role) | 🔴 Not Started |
 | P1 | 6 | Embedding Provider Interface | 🟢 Complete (in Phase 3.4) |
@@ -174,7 +174,7 @@
 
 ---
 
-## PHASE 3: VECTOR MEMORY INDEX INTERFACE (P0) 🟡 IN PROGRESS
+## PHASE 3: VECTOR MEMORY INDEX INTERFACE (P0) � COMPLETE
 
 ### Current State Analysis
 - ✅ `SqliteMemory` exists with basic event logging
@@ -260,17 +260,17 @@
 **File**: `src/liku/memory/vectorMemoryTypes.ts` ✅ (utilities)
 **File**: `src/liku/memory/sqliteVectorMemoryIndex.ts` ✅ (integration)
 
-#### 3.6 Tests for Vector Memory (VM-10)
-- [ ] Test scope weighting correctness
-- [ ] Test confidence impact on ranking
-- [ ] Test TTL decay removes expired records
-- [ ] Test advisory-only behavior (no authority)
-- [ ] Test policy-blocked writes (Phase 2 integration)
-- [ ] Test fail-open read behavior
-- [ ] 100% deterministic tests
-- [ ] No external dependencies
+#### 3.6 Tests for Vector Memory (VM-10) ✅
+- [x] Test scope weighting correctness
+- [x] Test confidence impact on ranking
+- [x] Test TTL decay removes expired records
+- [x] Test advisory-only behavior (no authority)
+- [x] Test policy-blocked writes (Phase 2 integration)
+- [x] Test fail-open read behavior
+- [x] 100% deterministic tests
+- [x] No external dependencies
 
-**File**: `test/vectorMemory.test.ts`
+**File**: `test/vectorMemory.integration.test.ts` ✅ (36 tests)
 
 ---
 
