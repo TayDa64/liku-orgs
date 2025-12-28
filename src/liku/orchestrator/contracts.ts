@@ -13,6 +13,7 @@
 
 import type { OrchestrationResult, EscalationInfo, PlannerOutput, PlanStep } from "./types.js";
 import type { LikuErrorCode } from "../errors.js";
+import { verifierContract } from "../agents/verifier/verifierContract.js";
 
 /**
  * Agent roles that have contracts.
@@ -452,6 +453,10 @@ export function getContract(role: AgentRole): AgentContract<unknown> | undefined
       return plannerContract as AgentContract<unknown>;
     case "synthesizer":
       return synthesizerContract as AgentContract<unknown>;
+    case "verifier":
+      return verifierContract as AgentContract<unknown>;
+    case "specialist":
+      return undefined; // Specialist contracts are dynamic per-skill
     default:
       return undefined;
   }

@@ -143,7 +143,8 @@ describe("Agent Contracts", () => {
     });
 
     it("should return valid for unknown roles (no contract)", () => {
-      const result = validateAgentOutput("verifier", { anything: "goes" });
+      // specialist has no static contract (dynamic per-skill)
+      const result = validateAgentOutput("specialist", { anything: "goes" });
       expect(result.valid).toBe(true);
     });
   });
