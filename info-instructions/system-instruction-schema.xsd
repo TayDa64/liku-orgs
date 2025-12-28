@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified"
+  version="1.0">
+
+  <!-- ========================= -->
+  <!-- SYSTEM INSTRUCTION SCHEMA -->
+  <!-- ========================= -->
+  <!--
+    Defines the structure for per-role system instructions.
+    Each agent role (supervisor, planner, specialist, verifier)
+    has a corresponding XML file that declares:
+    - Purpose: what the role does
+    - Prohibitions: what the role MUST NOT do
+    - Escalation rules: when and how to escalate
+    - Memory rules: read/write permissions and constraints
+    
+    Per Architecture Guardrails, these are LOCKED and non-negotiable.
+    Agents must acknowledge receipt of system instructions via the
+    acknowledgement protocol before execution proceeds.
+  -->
+
+  <!-- ========================= -->
+  <!-- ENUMERATIONS (Reused)     -->
+  <!-- ========================= -->
+
+  <xsd:simpleType name="roleType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="supervisor"/>
+      <xsd:enumeration value="planner"/>
+      <xsd:enumeration value="specialist"/>
+      <xsd:enumeration value="verifier"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="capabilityType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="read_repo"/>
+      <xsd:enumeration value="write_repo"/>
+      <xsd:enumeration value="execute_code"/>
+      <xsd:enumeration value="network_access"/>
+      <xsd:enumeration value="memory_read"/>
+      <xsd:enumeration value="memory_write"/>
+      <xsd:enumeration value="invoke_subagent"/>
+      <xsd:enumeration value="escalate"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="escalationReasonType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="missing_capability"/>
+      <xsd:enumeration value="ambiguous_requirement"/>
+      <xsd:enumeration value="framework_uncertainty"/>
+      <xsd:enumeration value="malformed_output"/>
+      <xsd:enumeration value="policy_conflict"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="severityType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="critical"/>
+      <xsd:enumeration value="high"/>
+      <xsd:enumeration value="medium"/>
+      <xsd:enumeration value="low"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <!-- ========================= -->
+  <!-- ROOT ELEMENT              -->
+  <!-- ========================= -->
+
+  <xsd:element name="systemInstruction">
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="purpose" type="PurposeType"/>
+        <xsd:element name="prohibitions" type="ProhibitionsType"/>
+        <xsd:element name="escalationRules" type="EscalationRulesType"/>
+        <xsd:element name="memoryRules" type="MemoryRulesType"/>
+        <xsd:element name="acknowledgementRequired" type="xsd:boolean" default="true"/>
+      </xsd:sequence>
+      <xsd:attribute name="role" type="roleType" use="required"/>
+      <xsd:attribute name="version" type="xsd:string" use="required"/>
+      <xsd:attribute name="schemaVersion" type="xsd:string" use="required"/>
+    </xsd:complexType>
+  </xsd:element>
+
+  <!-- ========================= -->
+  <!-- PURPOSE DEFINITION        -->
+  <!-- ========================= -->
+
+  <xsd:complexType name="PurposeType">
+    <xsd:sequence>
+      <xsd:element name="description" type="xsd:string">
+        <xsd:annotation>
+          <xsd:documentation>
+            Human-readable description of the role's purpose.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nature" type="xsd:string">
+        <xsd:annotation>
+          <xsd:documentation>
+            The fundamental nature of the role (e.g., "control-plane only", 
+            "execution agent", "read-only validation agent").
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="responsibilities">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="responsibility" type="xsd:string" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="allowedCapabilities" minOccurs="0">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="capability" type="capabilityType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <!-- ========================= -->
+  <!-- PROHIBITIONS DEFINITION   -->
+  <!-- ========================= -->
+
+  <xsd:complexType name="ProhibitionsType">
+    <xsd:annotation>
+      <xsd:documentation>
+        Explicit list of actions the role MUST NOT perform.
+        Violations trigger immediate escalation or termination.
+        Per Architecture Guardrails, these are LOCKED and non-negotiable.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="prohibition" type="ProhibitionType" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="ProhibitionType">
+    <xsd:sequence>
+      <xsd:element name="action" type="xsd:string">
+        <xsd:annotation>
+          <xsd:documentation>
+            The prohibited action (e.g., "execute_tasks", "call_tools", "modify_artifacts").
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="rationale" type="xsd:string">
+        <xsd:annotation>
+          <xsd:documentation>
+            Why this action is prohibited for this role.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="violationSeverity" type="severityType" default="critical"/>
+      <xsd:element name="onViolation" type="xsd:string" default="escalate">
+        <xsd:annotation>
+          <xsd:documentation>
+            What happens when this prohibition is violated.
+            Values: "escalate", "terminate", "log_and_continue"
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="id" type="xsd:string" use="required"/>
+  </xsd:complexType>
+
+  <!-- ========================= -->
+  <!-- ESCALATION RULES          -->
+  <!-- ========================= -->
+
+  <xsd:complexType name="EscalationRulesType">
+    <xsd:annotation>
+      <xsd:documentation>
+        Defines when and how the role should escalate.
+        Per Tier-1: Escalation is ticket-based, explicit, never assumed.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="canEscalate" type="xsd:boolean" default="true"/>
+      <xsd:element name="canApproveEscalation" type="xsd:boolean" default="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            Only supervisor can approve escalations (via Policy Engine).
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="escalationTriggers" minOccurs="0">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="trigger" type="EscalationTriggerType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="escalationBehavior" type="xsd:string" default="explicit_ticket">
+        <xsd:annotation>
+          <xsd:documentation>
+            How escalation is handled: "explicit_ticket" (default), "halt_and_report", "log_only"
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="EscalationTriggerType">
+    <xsd:sequence>
+      <xsd:element name="reason" type="escalationReasonType"/>
+      <xsd:element name="description" type="xsd:string"/>
+      <xsd:element name="autoEscalate" type="xsd:boolean" default="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            If true, automatically create escalation ticket.
+            If false, report to supervisor for decision.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <!-- ========================= -->
+  <!-- MEMORY RULES              -->
+  <!-- ========================= -->
+
+  <xsd:complexType name="MemoryRulesType">
+    <xsd:annotation>
+      <xsd:documentation>
+        Defines memory access permissions and constraints.
+        Per Memory Law: Memory is advisory-only, writes require policy approval.
+      </xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="canRead" type="xsd:boolean" default="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            Whether this role can read from vector memory.
+            Memory reads are fail-open (return empty on error).
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="canWrite" type="xsd:boolean" default="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            Whether this role can propose memory writes.
+            All writes require Policy Engine approval.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="canValidate" type="xsd:boolean" default="false">
+        <xsd:annotation>
+          <xsd:documentation>
+            Whether this role can mark memory as validated.
+            Only verifier can validate memory per Memory Law.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="advisoryOnly" type="xsd:boolean" default="true">
+        <xsd:annotation>
+          <xsd:documentation>
+            If true (default), memory is treated as advisory context only.
+            Memory absence must not break execution.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="scopePriority" minOccurs="0">
+        <xsd:annotation>
+          <xsd:documentation>
+            Defines scope priority for memory retrieval.
+            Default: workspace > repository > global
+          </xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="scope" type="MemoryScopePriorityType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="MemoryScopePriorityType">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="weight" type="xsd:decimal" use="required"/>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+</xsd:schema>

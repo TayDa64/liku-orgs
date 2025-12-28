@@ -701,7 +701,7 @@ describe("Policy-Blocked Writes", () => {
         skillId: "test-skill",
         declaresMemoryWrite: true
       },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,
@@ -725,7 +725,7 @@ describe("Policy-Blocked Writes", () => {
         skillId: "test-skill",
         declaresMemoryWrite: true
       },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,
@@ -749,7 +749,7 @@ describe("Policy-Blocked Writes", () => {
         skillId: "test-skill",
         declaresMemoryWrite: true
       },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,
@@ -772,7 +772,7 @@ describe("Policy-Blocked Writes", () => {
         skillId: "test-skill",
         declaresMemoryWrite: false // Not declared
       },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,
@@ -792,7 +792,7 @@ describe("Policy-Blocked Writes", () => {
       requestType: "memory_write",
       role: "specialist",
       skill: { skillId: "test-skill", declaresMemoryWrite: true },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,
@@ -933,7 +933,7 @@ describe("100% Deterministic Tests", () => {
       requestType: "memory_write",
       role: "specialist",
       skill: { skillId: "test-skill", declaresMemoryWrite: true },
-      context: { taskId: "task-1" },
+      context: { repoId: "test-repo", workspaceId: "test-workspace", taskId: "task-1" },
       userSettings: {
         allowNetwork: false,
         allowEscalation: true,

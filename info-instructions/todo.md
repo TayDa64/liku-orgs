@@ -13,9 +13,9 @@
 | P0 | 0 | Architecture Addenda (ChatGPT insights) | 🟢 Complete |
 | P0 | 1 | Skills Schema XSD Enforcement | 🟢 Complete (1.1-1.3) |
 | P0 | 2 | Policy Engine Formalization | 🟢 Complete (2.1-2.4) |
-| P0 | 3 | Vector Memory Index Interface | � Complete (3.1-3.6) |
+| P0 | 3 | Vector Memory Index Interface | 🟢 Complete (3.1-3.6) |
 | P0 | 4 | Verifier Agent Contract | 🟢 Complete |
-| P1 | 5 | System Instruction XML (Per Role) | 🔴 Not Started |
+| P1 | 5 | System Instruction XML (Per Role) | 🟢 Complete (5.1-5.3) |
 | P1 | 6 | Embedding Provider Interface | 🟢 Complete (in Phase 3.4) |
 | P2 | 7 | Memory Advisory Integration | 🟡 Partial |
 | P2 | 8 | Escalation Ticket Lifecycle | 🟡 Partial |
@@ -331,35 +331,57 @@
 
 ---
 
-## PHASE 5: SYSTEM INSTRUCTION XML (Per Role) (P1)
+## PHASE 5: SYSTEM INSTRUCTION XML (Per Role) (P1) 🟢 COMPLETE
 
 ### Current State Analysis
 - ✅ `supervisor.prompt.md` exists in `Liku/root/`
 - ✅ Agent context loaded from `context.md`
-- 🔴 **GAP**: No structured XML system instructions per role
-- 🔴 **GAP**: No acknowledgement protocol
-- 🔴 **GAP**: Role prohibitions not machine-enforced
+- ✅ **DONE**: Structured XML system instructions per role
+- ✅ **DONE**: Acknowledgement protocol with hash verification
+- ✅ **DONE**: Role prohibitions machine-enforced
 
-### Required Tasks
+### Completed Tasks ✅
 
-#### 5.1 Create System Instruction Schema
-- [ ] Create `src/liku/system/systemInstructionSchema.xsd`
-- [ ] Define elements: purpose, prohibitions, escalationRules, memoryRules
+#### 5.1 Create System Instruction Schema ✅
+- [x] Create `info-instructions/system-instruction-schema.xsd`
+- [x] Define elements: purpose, prohibitions, escalationRules, memoryRules
+- [x] Define role-specific constraints in XSD
+- [x] Define severity and violation action enumerations
 
-#### 5.2 Create Role-Specific System XMLs
-- [ ] Create `Liku/system/supervisor.xml`
-- [ ] Create `Liku/system/planner.xml`
-- [ ] Create `Liku/system/specialist.xml`
-- [ ] Create `Liku/system/verifier.xml`
+**File**: `info-instructions/system-instruction-schema.xsd` ✅
 
-**Directory**: `Liku/system/`
+#### 5.2 Create Role-Specific System XMLs ✅
+- [x] Create `Liku/system/supervisor.xml` - control-plane only, canApproveEscalation=true
+- [x] Create `Liku/system/planner.xml` - cognitive/reasoning only
+- [x] Create `Liku/system/specialist.xml` - execution agent, canWrite=true
+- [x] Create `Liku/system/verifier.xml` - read-only validation, canValidate=true
 
-#### 5.3 Implement Acknowledgement Protocol
-- [ ] Agent must emit `ack: { role, version, accepted: true }`
-- [ ] Failure to acknowledge = hard stop
-- [ ] Hash-based version tracking
+**Directory**: `Liku/system/` ✅
 
-**File**: `src/liku/agents/acknowledgement.ts`
+#### 5.3 Implement System Instruction Module ✅
+- [x] Create `src/liku/system/systemInstructionTypes.ts` - TypeScript types
+- [x] Create `src/liku/system/systemInstructionLoader.ts` - XML parsing and validation
+- [x] Create `src/liku/system/acknowledgement.ts` - Hash computation, ack protocol, caching
+- [x] Create `src/liku/system/index.ts` - Module exports
+- [x] Agent must emit `ack: { role, versionHash, accepted: true }`
+- [x] Failure to acknowledge = hard stop
+- [x] SHA-256 truncated to 16 hex chars (per Hashing Law)
+
+**Files**: `src/liku/system/*.ts` ✅
+
+#### 5.4 System Instruction Tests ✅
+- [x] Test XML parsing for all role types (13 tests)
+- [x] Test validation of role-specific constraints (10 tests)
+- [x] Test acknowledgement protocol (15 tests)
+- [x] Test prohibition checking (9 tests)
+- [x] Test capability checking (4 tests)
+- [x] Test memory rule validation (9 tests)
+- [x] Test escalation rule validation (3 tests)
+- [x] Test instruction cache (9 tests)
+- [x] Test role-specific constraints (15 tests)
+- [x] Test edge cases (5 tests)
+
+**File**: `test/systemInstruction.test.ts` ✅ (92 tests)
 
 ---
 
@@ -649,8 +671,8 @@ Implementation must halt and escalate to user if:
 src/liku/
 ├── agents/
 │   └── verifier/
-│       ├── verifierContract.ts    # Phase 4
-│       └── verifierTypes.ts       # Phase 4
+│       ├── verifierContract.ts    # Phase 4 ✅
+│       └── verifierTypes.ts       # Phase 4 ✅
 ├── escalation/
 │   ├── escalationRegistry.ts      # Phase 8
 │   └── escalationTypes.ts         # Phase 8
@@ -659,43 +681,49 @@ src/liku/
 │   ├── intentTypes.ts             # Phase 9
 │   └── instructionPersistence.ts  # Phase 9
 ├── memory/
-│   ├── embeddingProvider.ts       # Phase 3 (VM-04)
-│   ├── sqliteMemory.ts            # Existing
-│   ├── sqliteVectorMemoryIndex.ts # Phase 3 (VM-03)
-│   ├── types.ts                   # Existing
-│   └── vectorMemoryTypes.ts       # Phase 3 (VM-01)
+│   ├── embeddingProvider.ts       # Phase 3 ✅ (VM-04)
+│   ├── sqliteMemory.ts            # Existing ✅
+│   ├── sqliteVectorMemoryIndex.ts # Phase 3 ✅ (VM-03)
+│   ├── types.ts                   # Existing ✅
+│   ├── vectorMemorySchema.ts      # Phase 3 ✅ (VM-02)
+│   ├── vectorMemoryTypes.ts       # Phase 3 ✅ (VM-01)
+│   └── index.ts                   # Phase 3 ✅
 ├── policy/
-│   ├── policyEngine.ts            # Phase 2
-│   └── policyTypes.ts             # Phase 2
+│   ├── policyEngine.ts            # Phase 2 ✅
+│   └── policyTypes.ts             # Phase 2 ✅
 ├── skills/
-│   ├── loader.ts                  # Existing
-│   ├── skillsXml.ts               # Existing
-│   ├── types.ts                   # Update (Phase 1)
-│   ├── validator.ts               # Existing
-│   └── xsdValidator.ts            # Phase 1
+│   ├── loader.ts                  # Existing ✅
+│   ├── skillsXml.ts               # Existing ✅
+│   ├── types.ts                   # Phase 1 ✅
+│   ├── validator.ts               # Existing ✅
+│   └── xsdValidator.ts            # Phase 1 ✅
 ├── system/
-│   └── acknowledgement.ts         # Phase 5
+│   ├── systemInstructionTypes.ts  # Phase 5 ✅
+│   ├── systemInstructionLoader.ts # Phase 5 ✅
+│   ├── acknowledgement.ts         # Phase 5 ✅
+│   └── index.ts                   # Phase 5 ✅
 └── ...existing files...
 
 Liku/
 ├── system/
-│   ├── supervisor.xml             # Phase 5
-│   ├── planner.xml                # Phase 5
-│   ├── specialist.xml             # Phase 5
-│   └── verifier.xml               # Phase 5
+│   ├── supervisor.xml             # Phase 5 ✅
+│   ├── planner.xml                # Phase 5 ✅
+│   ├── specialist.xml             # Phase 5 ✅
+│   └── verifier.xml               # Phase 5 ✅
 └── ...existing structure...
 
 info-instructions/
-├── architecture_guardrails.md     # Updated with new laws
-├── policy-engine.md               # Existing
-├── skills-schema.xsd              # Existing
+├── architecture_guardrails.md     # Updated with new laws ✅
+├── policy-engine.md               # Existing ✅
+├── skills-schema.xsd              # Existing ✅
+├── system-instruction-schema.xsd  # Phase 5 ✅
 ├── ticket-vm-01.md                # Existing (VM tickets)
-├── Tier-1-lock-in.md              # Updated with Planner failure semantics
-├── tier-2-implementation-guide.md # Updated with failure/isolation rules
-├── Tier1-1-information.md         # Existing
+├── Tier-1-lock-in.md              # Updated with Planner failure semantics ✅
+├── tier-2-implementation-guide.md # Updated with failure/isolation rules ✅
+├── Tier1-1-information.md         # Existing ✅
 ├── todo.md                        # This file
-├── user-instruction-lifecycle.md  # NEW - Phase 0
-└── vector-memory-index.md         # Existing
+├── user-instruction-lifecycle.md  # Phase 0 ✅
+└── vector-memory-index.md         # Existing ✅
 ```
 
 ---
@@ -706,9 +734,12 @@ info-instructions/
 2. ✅ ~~**Phase 1.3**: Create `xsdValidator.ts` with schema validation~~
 3. ✅ ~~**Phase 2.1**: Create `src/liku/policy/policyTypes.ts`~~
 4. ✅ ~~**Phase 2.2**: Implement pure-function `policyEngine.ts`~~
-5. ✅ ~~**Phase 3.1**: Define `VectorMemoryRecord` and `VectorMemoryIndex` interface types~~
-6. **Phase 4**: Create Verifier Agent Contract (types, contract, tests)
-7. **Phase 3.2**: SQLite Schema for Vector Memory (VM-02)
+5. ✅ ~~**Phase 3.1-3.6**: Define Vector Memory Index (types, schema, SQLite, embedding, tests)~~
+6. ✅ ~~**Phase 4**: Create Verifier Agent Contract (types, contract, tests)~~
+7. ✅ ~~**Phase 5**: System Instruction XML (schema, role XMLs, acknowledgement protocol)~~
+8. **Phase 7**: Memory Advisory Integration (planner/specialist memory queries)
+9. **Phase 8**: Escalation Ticket Lifecycle (ticket types, registry, integration)
+10. **Phase 9**: User Instruction Lifecycle (intent types, parser, persistence)
 
 ---
 
