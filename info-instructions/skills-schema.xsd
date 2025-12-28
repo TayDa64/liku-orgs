@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  attributeFormDefault="unqualified"
+  version="1.0">
+
+  <!-- ========================= -->
+  <!-- ENUMERATIONS              -->
+  <!-- ========================= -->
+
+  <xsd:simpleType name="roleType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="supervisor"/>
+      <xsd:enumeration value="planner"/>
+      <xsd:enumeration value="specialist"/>
+      <xsd:enumeration value="verifier"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="capabilityType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="read_repo"/>
+      <xsd:enumeration value="write_repo"/>
+      <xsd:enumeration value="execute_code"/>
+      <xsd:enumeration value="network_access"/>
+      <xsd:enumeration value="memory_read"/>
+      <xsd:enumeration value="memory_write"/>
+      <xsd:enumeration value="invoke_subagent"/>
+      <xsd:enumeration value="escalate"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="escalationReasonType">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="missing_capability"/>
+      <xsd:enumeration value="ambiguous_requirement"/>
+      <xsd:enumeration value="framework_uncertainty"/>
+      <xsd:enumeration value="malformed_output"/>
+      <xsd:enumeration value="policy_conflict"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <!-- ========================= -->
+  <!-- ROOT ELEMENT              -->
+  <!-- ========================= -->
+
+  <xsd:element name="skills">
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="skill" type="SkillType" maxOccurs="unbounded"/>
+      </xsd:sequence>
+      <xsd:attribute name="schemaVersion" type="xsd:string" use="required"/>
+    </xsd:complexType>
+  </xsd:element>
+
+  <!-- ========================= -->
+  <!-- SKILL DEFINITION          -->
+  <!-- ========================= -->
+
+  <xsd:complexType name="SkillType">
+    <xsd:sequence>
+
+      <xsd:element name="description" type="xsd:string"/>
+
+      <!-- Optional hierarchical parent -->
+      <xsd:element name="extends" type="xsd:string" minOccurs="0"/>
+
+      <!-- Role binding -->
+      <xsd:element name="allowedRoles">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="role" type="roleType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Capability requirements -->
+      <xsd:element name="requiredCapabilities">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="capability" type="capabilityType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Allowed tools (execution only, no authority implied) -->
+      <xsd:element name="allowedTools" minOccurs="0">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="tool" type="xsd:string" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Escalation rules -->
+      <xsd:element name="escalationPolicy" minOccurs="0">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="on" type="escalationReasonType" maxOccurs="unbounded"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Memory interaction constraints -->
+      <xsd:element name="memoryAccess" minOccurs="0">
+        <xsd:complexType>
+          <xsd:attribute name="read" type="xsd:boolean" use="optional" default="false"/>
+          <xsd:attribute name="write" type="xsd:boolean" use="optional" default="false"/>
+        </xsd:complexType>
+      </xsd:element>
+
+    </xsd:sequence>
+
+    <!-- Skill identity -->
+    <xsd:attribute name="id" type="xsd:string" use="required"/>
+    <xsd:attribute name="version" type="xsd:string" use="required"/>
+
+  </xsd:complexType>
+
+</xsd:schema>

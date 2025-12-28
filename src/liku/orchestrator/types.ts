@@ -5,6 +5,7 @@
 
 import type { AgentBundle } from "../engine.js";
 import type { LikuErrorCode } from "../errors.js";
+import type { PolicyDecision, PolicyDecisionCode } from "../policy/index.js";
 
 /**
  * A step in an orchestration plan.
@@ -149,6 +150,7 @@ export type OrchestrationEventType =
   | "step_completed"
   | "escalation"
   | "elicitation"
+  | "policy_decision"
   | "run_started"
   | "run_completed";
 
@@ -226,6 +228,21 @@ export type RunCompletedEvent = OrchestrationEventBase & {
 };
 
 /**
+ * Event emitted when Policy Engine makes a decision.
+ * Per Architecture Guardrails: all policy decisions are auditable.
+ */
+export type PolicyDecisionEvent = OrchestrationEventBase & {
+  type: "policy_decision";
+  stepId: string;
+  requestType: "capability" | "escalation" | "memory_write";
+  approved: boolean;
+  decisionCode: PolicyDecisionCode;
+  rationale: string;
+  inputsHash: string;
+  ruleVersion: string;
+};
+
+/**
  * Union of all orchestration events.
  */
 export type OrchestrationEvent =
@@ -233,6 +250,7 @@ export type OrchestrationEvent =
   | StepCompletedEvent
   | EscalationEvent
   | ElicitationEvent
+  | PolicyDecisionEvent
   | RunStartedEvent
   | RunCompletedEvent;
 
@@ -255,4 +273,6 @@ export type OrchestrationEventOptions = {
   emitEscalation?: boolean;
   /** Whether to emit elicitation events */
   emitElicitation?: boolean;
+  /** Whether to emit policy_decision events (default: true for audit) */
+  emitPolicyDecision?: boolean;
 };

@@ -5,6 +5,11 @@
  * - Sequential pipeline: Supervisor → Parser → Planner → Specialist(s) → Synthesizer
  * - Parallel fan-out: Multiple specialists in parallel (up to maxConcurrency)
  * - Hierarchical: Specialists can request sub-agents
+ * 
+ * ARCHITECTURE GUARDRAILS:
+ * - Policy Engine is invoked BEFORE capability usage, escalation, and memory writes
+ * - All policy decisions are auditable via policy_decision events
+ * - DENY BY DEFAULT on any policy evaluation failure
  */
 
 import crypto from "node:crypto";
@@ -14,6 +19,19 @@ import { LikuError, toLikuError, type LikuErrorCode } from "../errors.js";
 import { validateSkillsIndex, getResidencePrivilege } from "../skills/validator.js";
 import type { LlmClient, LlmInput, LlmOutput, LlmError } from "../llm/types.js";
 import { StubLlmClient } from "../llm/types.js";
+import {
+  evaluate as evaluatePolicy,
+  createSkillReference,
+  isApproved,
+  DEFAULT_USER_POLICY_SETTINGS
+} from "../policy/index.js";
+import type {
+  PolicyRequest,
+  PolicyDecision,
+  UserPolicySettings,
+  PolicySkillReference
+} from "../policy/index.js";
+import type { RoleType, CapabilityType } from "../skills/types.js";
 import type {
   OrchestrationInput,
   OrchestrationConfig,
@@ -27,6 +45,7 @@ import type {
   StepStartedEvent,
   StepCompletedEvent,
   EscalationEvent,
+  PolicyDecisionEvent,
   RunStartedEvent,
   RunCompletedEvent
 } from "./types.js";
@@ -60,6 +79,7 @@ function emitEvent(
     step_completed: "emitStepCompleted",
     escalation: "emitEscalation",
     elicitation: "emitElicitation",
+    policy_decision: "emitPolicyDecision",
     run_started: null,  // Always emitted
     run_completed: null // Always emitted
   };
@@ -116,16 +136,23 @@ function adaptLlmOutput(output: LlmOutput): LlmResponse {
 
 /**
  * The Liku Orchestrator coordinates multi-agent pipelines.
+ * 
+ * ARCHITECTURE GUARDRAILS:
+ * - Policy Engine is invoked BEFORE capability usage
+ * - All policy decisions emit policy_decision events for audit
+ * - DENY BY DEFAULT on any policy failure
  */
 export class Orchestrator {
   private readonly engine: LikuEngine;
   private readonly limiter: ConcurrencyLimiter;
   private llmClient: LlmClient;
+  private userPolicySettings: UserPolicySettings;
 
   constructor(engine: LikuEngine, llmClient?: LlmClient) {
     this.engine = engine;
     this.limiter = new ConcurrencyLimiter(5);
     this.llmClient = llmClient ?? new StubLlmClient();
+    this.userPolicySettings = { ...DEFAULT_USER_POLICY_SETTINGS };
   }
 
   /**
@@ -133,6 +160,21 @@ export class Orchestrator {
    */
   setLlmClient(client: LlmClient): void {
     this.llmClient = client;
+  }
+
+  /**
+   * Configure user policy settings.
+   * These control what capabilities/escalations are allowed.
+   */
+  setUserPolicySettings(settings: Partial<UserPolicySettings>): void {
+    this.userPolicySettings = { ...this.userPolicySettings, ...settings };
+  }
+
+  /**
+   * Get current user policy settings.
+   */
+  getUserPolicySettings(): UserPolicySettings {
+    return { ...this.userPolicySettings };
   }
 
   /**
@@ -146,6 +188,117 @@ export class Orchestrator {
       executeWithLlm: this.llmClient.isConfigured(),
       abortOnError: true
     };
+  }
+
+  /**
+   * Determine the role type from an agent residence path.
+   * Per Tier-1 Role Law: supervisor, planner, specialist, verifier.
+   */
+  private getRoleFromResidence(residence: string): RoleType {
+    const lower = residence.toLowerCase();
+    if (lower.includes("supervisor") || lower.endsWith("/root")) {
+      return "supervisor";
+    }
+    if (lower.includes("planner")) {
+      return "planner";
+    }
+    if (lower.includes("verifier")) {
+      return "verifier";
+    }
+    // Default to specialist for execution agents
+    return "specialist";
+  }
+
+  /**
+   * Evaluate policy for a capability request.
+   * Returns the policy decision and emits audit event.
+   * 
+   * ARCHITECTURE GUARDRAIL: Policy is evaluated BEFORE capability usage.
+   */
+  private evaluatePolicyForCapabilities(
+    taskId: string,
+    stepId: string,
+    role: RoleType,
+    skillRef: PolicySkillReference,
+    capabilities: CapabilityType[],
+    eventOptions: OrchestrationEventOptions | undefined
+  ): PolicyDecision {
+    const request: PolicyRequest = {
+      requestId: `${taskId}:${stepId}:cap`,
+      requestType: "capability",
+      role,
+      skill: skillRef,
+      capabilitiesRequested: capabilities,
+      context: {
+        taskId,
+        timestamp: isoNow()
+      },
+      userSettings: this.userPolicySettings
+    };
+
+    const decision = evaluatePolicy(request);
+
+    // Emit policy_decision event for audit
+    emitEvent(eventOptions, {
+      type: "policy_decision",
+      timestamp: isoNow(),
+      taskId,
+      stepId,
+      requestType: "capability",
+      approved: decision.approved,
+      decisionCode: decision.decisionCode,
+      rationale: decision.rationale,
+      inputsHash: decision.audit.inputsHash,
+      ruleVersion: decision.audit.ruleVersion
+    });
+
+    return decision;
+  }
+
+  /**
+   * Evaluate policy for an escalation request.
+   * Returns the policy decision and emits audit event.
+   * 
+   * ARCHITECTURE GUARDRAIL: Policy is evaluated BEFORE escalation approval.
+   */
+  private evaluatePolicyForEscalation(
+    taskId: string,
+    stepId: string,
+    role: RoleType,
+    skillRef: PolicySkillReference,
+    reason: string,
+    eventOptions: OrchestrationEventOptions | undefined
+  ): PolicyDecision {
+    const request: PolicyRequest = {
+      requestId: `${taskId}:${stepId}:esc`,
+      requestType: "escalation",
+      role,
+      skill: skillRef,
+      escalationReason: reason as PolicyRequest["escalationReason"],
+      context: {
+        taskId,
+        timestamp: isoNow()
+      },
+      userSettings: this.userPolicySettings
+    };
+
+    const decision = evaluatePolicy(request);
+
+    // Emit policy_decision event for audit
+    emitEvent(eventOptions, {
+      type: "policy_decision",
+      timestamp: isoNow(),
+      taskId,
+      stepId,
+      requestType: "escalation",
+      approved: decision.approved,
+      decisionCode: decision.decisionCode,
+      rationale: decision.rationale,
+      inputsHash: decision.audit.inputsHash,
+      ruleVersion: decision.audit.ruleVersion
+    });
+
+    return decision;
   }
 
   /**
@@ -312,13 +465,18 @@ export class Orchestrator {
 
   /**
    * Execute a single step with timeout and error handling.
+   * 
+   * ARCHITECTURE GUARDRAIL: Policy is evaluated BEFORE capability usage.
    */
   private async runStep(
     step: PlanStep,
     config: OrchestrationConfig,
-    orchestrationStart: number
+    orchestrationStart: number,
+    taskId?: string,
+    eventOptions?: OrchestrationEventOptions
   ): Promise<StepResult> {
     const stepStart = Date.now();
+    const effectiveTaskId = taskId ?? "unknown";
 
     // Check total timeout
     if (Date.now() - orchestrationStart > config.totalTimeoutMs) {
@@ -368,6 +526,58 @@ export class Orchestrator {
       }
 
       const bundle = bundleResult.bundle;
+
+      // =================================================================
+      // POLICY ENGINE EVALUATION (Per Architecture Guardrails)
+      // Policy is evaluated BEFORE capability usage.
+      // =================================================================
+      const role = this.getRoleFromResidence(step.agentResidence);
+      
+      // Build skill reference from bundle
+      const skillRef: PolicySkillReference = {
+        skillId: bundle.skills[0]?.id ?? "unknown",
+        version: bundle.skills[0]?.version,
+        allowedRoles: bundle.skills[0]?.allowedRoles,
+        declaredCapabilities: bundle.skills[0]?.requiredCapabilities
+      };
+
+      // Collect required capabilities from all skills
+      const requiredCapabilities = bundle.skills
+        .flatMap(s => s.requiredCapabilities ?? [])
+        .filter((v, i, a) => a.indexOf(v) === i) as CapabilityType[];
+
+      // Evaluate policy for capabilities if any are required
+      if (requiredCapabilities.length > 0) {
+        const policyDecision = this.evaluatePolicyForCapabilities(
+          effectiveTaskId,
+          step.id,
+          role,
+          skillRef,
+          requiredCapabilities,
+          eventOptions
+        );
+
+        if (!isApproved(policyDecision)) {
+          return {
+            stepId: step.id,
+            agentResidence: step.agentResidence,
+            status: "error",
+            error: {
+              code: "CAPABILITY_DENIED",
+              message: `Policy denied: ${policyDecision.rationale}`,
+              details: {
+                decisionCode: policyDecision.decisionCode,
+                inputsHash: policyDecision.audit.inputsHash
+              }
+            },
+            durationMs: Date.now() - stepStart,
+            paperTrail: bundle.paperTrail
+          };
+        }
+      }
+      // =================================================================
+      // END POLICY ENGINE EVALUATION
+      // =================================================================
 
       // Check for missing skills that might require escalation
       const escalation = this.checkForEscalation(bundle, step);
@@ -457,7 +667,7 @@ export class Orchestrator {
       // Run sequential steps first
       for (const step of sequentialSteps) {
         const result = await this.limiter.run(() =>
-          this.runStep(step, config, orchestrationStart)
+          this.runStep(step, config, orchestrationStart, undefined, undefined)
         );
         results.push(result);
         completed.add(step.id);
@@ -472,7 +682,7 @@ export class Orchestrator {
       if (parallelSteps.length > 0) {
         const parallelResults = await Promise.all(
           parallelSteps.map((step) =>
-            this.limiter.run(() => this.runStep(step, config, orchestrationStart))
+            this.limiter.run(() => this.runStep(step, config, orchestrationStart, undefined, undefined))
           )
         );
         results.push(...parallelResults);
@@ -695,7 +905,7 @@ export class Orchestrator {
       description: step.description
     });
 
-    const result = await this.runStep(step, config, orchestrationStart);
+    const result = await this.runStep(step, config, orchestrationStart, taskId, eventOptions);
 
     // Emit step_completed event
     const completedEvent: StepCompletedEvent = {

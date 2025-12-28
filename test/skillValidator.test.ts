@@ -36,9 +36,10 @@ describe("Skill Types", () => {
 
   describe("PRIVILEGE_CAPABILITIES", () => {
     it("should have correct capability counts", () => {
-      expect(PRIVILEGE_CAPABILITIES.root.length).toBe(7);
-      expect(PRIVILEGE_CAPABILITIES.specialist.length).toBe(5);
-      expect(PRIVILEGE_CAPABILITIES.user.length).toBe(1);
+      // Updated for XSD compliance: added memory_read capability
+      expect(PRIVILEGE_CAPABILITIES.root.length).toBe(8);
+      expect(PRIVILEGE_CAPABILITIES.specialist.length).toBe(6);
+      expect(PRIVILEGE_CAPABILITIES.user.length).toBe(2);
     });
   });
 });
@@ -197,7 +198,8 @@ describe("Skill Validator", () => {
     it("should return user capabilities", () => {
       const caps = getCapabilities("user");
       expect(caps).toContain("read_repo");
-      expect(caps.length).toBe(1);
+      expect(caps).toContain("memory_read");
+      expect(caps.length).toBe(2);
     });
   });
 
