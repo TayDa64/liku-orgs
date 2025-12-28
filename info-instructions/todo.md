@@ -13,10 +13,10 @@
 | P0 | 0 | Architecture Addenda (ChatGPT insights) | 🟢 Complete |
 | P0 | 1 | Skills Schema XSD Enforcement | 🟢 Complete (1.1-1.3) |
 | P0 | 2 | Policy Engine Formalization | 🟢 Complete (2.1-2.4) |
-| P0 | 3 | Vector Memory Index Interface | 🟡 In Progress (3.1-3.3, 3.5 done) |
+| P0 | 3 | Vector Memory Index Interface | 🟡 In Progress (3.1-3.5 done) |
 | P0 | 4 | Verifier Agent Contract | 🟢 Complete |
 | P1 | 5 | System Instruction XML (Per Role) | 🔴 Not Started |
-| P1 | 6 | Embedding Provider Interface | 🔴 Not Started |
+| P1 | 6 | Embedding Provider Interface | 🟢 Complete (in Phase 3.4) |
 | P2 | 7 | Memory Advisory Integration | 🟡 Partial |
 | P2 | 8 | Escalation Ticket Lifecycle | 🟡 Partial |
 | P2 | 9 | User Instruction Lifecycle | 🔴 Not Started |
@@ -234,14 +234,18 @@
 **Tests**: `test/sqliteVectorMemoryIndex.test.ts` ✅ (55 tests)
 **Commit**: `b3b5a33`
 
-#### 3.4 Embedding Provider Interface (VM-04)
-- [ ] Create `src/liku/memory/embeddingProvider.ts`
-- [ ] Define `EmbeddingProvider` interface
-- [ ] Implement `NoopEmbeddingProvider` (zero vectors)
-- [ ] Implement `HashEmbeddingProvider` (deterministic, test-safe)
-- [ ] No external API calls in default providers
+#### 3.4 Embedding Provider Interface (VM-04) ✅
+- [x] Create `src/liku/memory/embeddingProvider.ts`
+- [x] Define `EmbeddingProvider` interface (in vectorMemoryTypes.ts)
+- [x] Implement `NoopEmbeddingProvider` (zero vectors)
+- [x] Implement `HashEmbeddingProvider` (deterministic, test-safe)
+- [x] Implement `RandomEmbeddingProvider` (seeded for reproducibility)
+- [x] Implement `CachingEmbeddingProvider` (wraps any provider)
+- [x] Factory functions: `createTestEmbeddingProvider`, `createNoopEmbeddingProvider`
+- [x] No external API calls in default providers
 
-**File**: `src/liku/memory/embeddingProvider.ts`
+**File**: `src/liku/memory/embeddingProvider.ts` ✅
+**Tests**: `test/embeddingProvider.test.ts` ✅ (55 tests)
 
 #### 3.5 Retrieval Weighting & Ranking (VM-05) ✅
 - [x] Implement scope weights: workspace=1.0, repo=0.8, global=0.4

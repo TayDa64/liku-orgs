@@ -66,3 +66,13 @@ export {
   cosineSimilarity
 } from "./sqliteVectorMemoryIndex.js";
 export type { SQLiteVectorMemoryIndexOptions } from "./sqliteVectorMemoryIndex.js";
+
+// Embedding Providers (VM-04)
+export {
+  NoopEmbeddingProvider,
+  HashEmbeddingProvider,
+  RandomEmbeddingProvider,
+  CachingEmbeddingProvider,
+  createTestEmbeddingProvider,
+  createNoopEmbeddingProvider
+} from "./embeddingProvider.js";
