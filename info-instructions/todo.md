@@ -13,8 +13,8 @@
 | P0 | 0 | Architecture Addenda (ChatGPT insights) | 🟢 Complete |
 | P0 | 1 | Skills Schema XSD Enforcement | 🟢 Complete (1.1-1.3) |
 | P0 | 2 | Policy Engine Formalization | 🟢 Complete (2.1-2.4) |
-| P0 | 3 | Vector Memory Index Interface | � In Progress (3.1 done) |
-| P0 | 4 | Verifier Agent Contract | 🔴 Not Started |
+| P0 | 3 | Vector Memory Index Interface | 🟡 In Progress (3.1-3.3, 3.5 done) |
+| P0 | 4 | Verifier Agent Contract | 🟢 Complete |
 | P1 | 5 | System Instruction XML (Per Role) | 🔴 Not Started |
 | P1 | 6 | Embedding Provider Interface | 🔴 Not Started |
 | P2 | 7 | Memory Advisory Integration | 🟡 Partial |
@@ -174,17 +174,19 @@
 
 ---
 
-## PHASE 3: VECTOR MEMORY INDEX INTERFACE (P0)
+## PHASE 3: VECTOR MEMORY INDEX INTERFACE (P0) 🟡 IN PROGRESS
 
 ### Current State Analysis
 - ✅ `SqliteMemory` exists with basic event logging
 - ✅ Memory provenance metadata defined
 - ✅ Memory marked as advisory
-- 🔴 **GAP**: No vector embeddings
-- 🔴 **GAP**: No `VectorMemoryIndex` interface
-- 🔴 **GAP**: No `VectorMemoryRecord` type
-- 🔴 **GAP**: No similarity-based retrieval
-- 🔴 **GAP**: No decay/TTL enforcement
+- ✅ **DONE**: `VectorMemoryIndex` interface defined
+- ✅ **DONE**: `VectorMemoryRecord` type with full provenance
+- ✅ **DONE**: SQLite schema with embedding BLOB storage
+- ✅ **DONE**: `SQLiteVectorMemoryIndex` implementation
+- ✅ **DONE**: Cosine similarity in JS, relevance scoring
+- 🔴 **GAP**: No embedding providers (Phase 3.4)
+- 🔴 **GAP**: Integration tests (Phase 3.6)
 
 ### Required Tasks
 
@@ -202,27 +204,35 @@
 **File**: `src/liku/memory/vectorMemoryTypes.ts` ✅
 **Tests**: `test/vectorMemoryTypes.test.ts` ✅ (41 tests)
 
-#### 3.2 SQLite Schema for Vector Memory (VM-02)
-- [ ] Create `vector_memory` table schema
-- [ ] Fields: `id`, `embedding` (BLOB), `content`, `type`, `scope`
-- [ ] Provenance fields: `repo_id`, `workspace_id`, `task_id`, `step_id`, `agent_role`
-- [ ] Trust fields: `confidence`, `validated`, `verifier_task_id`
-- [ ] Decay fields: `ttl`, `created_at`, `last_accessed_at`
-- [ ] Indexes on `scope + repo_id`
+#### 3.2 SQLite Schema for Vector Memory (VM-02) ✅
+- [x] Create `vector_memory` table schema
+- [x] Fields: `id`, `embedding` (BLOB), `content`, `type`, `scope`
+- [x] Provenance fields: `repo_id`, `workspace_id`, `task_id`, `step_id`, `agent_role`
+- [x] Trust fields: `confidence`, `validated`, `verifier_task_id`
+- [x] Decay fields: `ttl`, `created_at`, `last_accessed_at`
+- [x] Indexes on `scope + repo_id` (6 indexes total)
+- [x] Float64Array serialization for full precision
+- [x] Version-tracked migration system
 
-**File**: `src/liku/memory/vectorMemorySchema.sql` (or in-code migration)
+**File**: `src/liku/memory/vectorMemorySchema.ts` ✅
+**Tests**: `test/vectorMemorySchema.test.ts` ✅ (40 tests)
+**Commit**: `033b070`
 
-#### 3.3 Implement SQLiteVectorMemoryIndex (VM-03)
-- [ ] Create `src/liku/memory/sqliteVectorMemoryIndex.ts`
-- [ ] Implement `upsert(record: VectorMemoryRecord): Promise<void>`
-- [ ] Implement `query(params): Promise<VectorMemoryRecord[]>`
-- [ ] Implement `decay(now: Date): Promise<number>`
-- [ ] Implement `stats(): Promise<MemoryStats>`
-- [ ] Cosine similarity computed in JS (no extensions)
-- [ ] Fail-open on query errors (return empty)
-- [ ] No policy logic inside class
+#### 3.3 Implement SQLiteVectorMemoryIndex (VM-03) ✅
+- [x] Create `src/liku/memory/sqliteVectorMemoryIndex.ts`
+- [x] Implement `upsert(record: VectorMemoryRecord): Promise<void>`
+- [x] Implement `query(params): Promise<VectorMemoryRecord[]>`
+- [x] Implement `decay(now: Date): Promise<number>`
+- [x] Implement `stats(): Promise<MemoryStats>`
+- [x] Cosine similarity computed in JS (no extensions)
+- [x] Fail-open on query errors (return empty array)
+- [x] No policy logic inside class
+- [x] Query filters: repoId, workspaceId, scope, type[], minConfidence, validatedOnly
+- [x] Memory module index.ts consolidates exports
 
-**File**: `src/liku/memory/sqliteVectorMemoryIndex.ts`
+**File**: `src/liku/memory/sqliteVectorMemoryIndex.ts` ✅
+**Tests**: `test/sqliteVectorMemoryIndex.test.ts` ✅ (55 tests)
+**Commit**: `b3b5a33`
 
 #### 3.4 Embedding Provider Interface (VM-04)
 - [ ] Create `src/liku/memory/embeddingProvider.ts`
@@ -233,15 +243,18 @@
 
 **File**: `src/liku/memory/embeddingProvider.ts`
 
-#### 3.5 Retrieval Weighting & Ranking (VM-05)
-- [ ] Implement scope weights: workspace=1.0, repo=0.8, global=0.4
-- [ ] Implement trust weight: `validated ? 1.0 : confidence`
-- [ ] Implement freshness weight: `max(0.2, 1 - age/ttl)`
-- [ ] Ensure workspace memory outranks global at equal similarity
-- [ ] Ensure unvalidated never scores higher than validated
-- [ ] Expired memory never returned
+#### 3.5 Retrieval Weighting & Ranking (VM-05) ✅
+- [x] Implement scope weights: workspace=1.0, repo=0.8, global=0.4
+- [x] Implement trust weight: `validated ? 1.0 : confidence`
+- [x] Implement freshness weight: `max(0.2, 1 - age/ttl)`
+- [x] Ensure workspace memory outranks global at equal similarity
+- [x] Ensure unvalidated never scores higher than validated
+- [x] Expired memory never returned
+- [x] `calculateRelevanceScore()` utility function
+- [x] `isExpired()` utility function
 
-**File**: `src/liku/memory/sqliteVectorMemoryIndex.ts`
+**File**: `src/liku/memory/vectorMemoryTypes.ts` ✅ (utilities)
+**File**: `src/liku/memory/sqliteVectorMemoryIndex.ts` ✅ (integration)
 
 #### 3.6 Tests for Vector Memory (VM-10)
 - [ ] Test scope weighting correctness
@@ -257,67 +270,60 @@
 
 ---
 
-## PHASE 4: VERIFIER AGENT CONTRACT (P0)
+## PHASE 4: VERIFIER AGENT CONTRACT (P0) ✅ COMPLETE
 
 ### Current State Analysis
 - ✅ Contracts exist in `contracts.ts` for supervisor/parser/planner/synthesizer
 - ✅ Violation handling with retry/escalate logic
-- 🔴 **GAP**: No Verifier contract
-- 🔴 **GAP**: Verifier role not formalized
-- 🔴 **GAP**: No verifier-specific types
+- ✅ **DONE**: Verifier contract implemented
+- ✅ **DONE**: Verifier role formalized with prohibitions
+- ✅ **DONE**: Verifier-specific types defined
+- ✅ **DONE**: Integrated into contract registry
 
 ### Required Tasks
 
-#### 4.1 Create Verifier Contract Types
-- [ ] Create `src/liku/agents/verifier/verifierTypes.ts`
-- [ ] Define `VerifierInput`:
-  ```typescript
-  type VerifierInput = {
-    artifact: unknown;
-    declaredContract: string;
-    contextMetadata: Record<string, unknown>;
-  };
-  ```
-- [ ] Define `VerifierOutput`:
-  ```typescript
-  type VerifierOutput = {
-    verdict: "pass" | "fail";
-    violations: TypedViolation[];
-    guidance: string;
-    escalationRecommended: boolean;
-  };
-  ```
-- [ ] Define `TypedViolation` with categorization
+#### 4.1 Create Verifier Contract Types ✅
+- [x] Create `src/liku/agents/verifier/verifierTypes.ts`
+- [x] Define `VerifierInput` with artifact, declaredContract, contextMetadata
+- [x] Define `VerifierOutput` with verdict, violations, guidance, escalationRecommended
+- [x] Define `TypedViolation` with category, severity, description, location, suggestion
+- [x] Define `VERIFIER_PROHIBITIONS` for role enforcement
 
-**File**: `src/liku/agents/verifier/verifierTypes.ts`
+**File**: `src/liku/agents/verifier/verifierTypes.ts` ✅
 
-#### 4.2 Implement Verifier Contract
-- [ ] Create `src/liku/agents/verifier/verifierContract.ts`
-- [ ] Implement `AgentContract<VerifierOutput>` interface
-- [ ] Parse and validate verifier output
-- [ ] Explicit prohibitions:
+#### 4.2 Implement Verifier Contract ✅
+- [x] Create `src/liku/agents/verifier/verifierContract.ts`
+- [x] Implement `AgentContract<VerifierOutput>` interface
+- [x] Parse and validate verifier output
+- [x] Explicit prohibitions enforced:
   - No tool calls
   - No artifact modification
   - No memory writes
   - No escalation approval
-- [ ] Violations route back to orchestrator only
+- [x] Violations route back to orchestrator only
+- [x] Prohibition detection in `validateOutput()`
 
-**File**: `src/liku/agents/verifier/verifierContract.ts`
+**File**: `src/liku/agents/verifier/verifierContract.ts` ✅
+**File**: `src/liku/agents/verifier/index.ts` ✅
 
-#### 4.3 Integrate Verifier into Contract Registry
-- [ ] Add "verifier" to `AgentRole` union
-- [ ] Register verifier contract in `getContract()`
-- [ ] Add validation for verifier outputs
+#### 4.3 Integrate Verifier into Contract Registry ✅
+- [x] Add "verifier" to `AgentRole` union
+- [x] Register verifier contract in `getContract()`
+- [x] Add validation for verifier outputs
 
-**File**: `src/liku/orchestrator/contracts.ts`
+**File**: `src/liku/orchestrator/contracts.ts` ✅
 
-#### 4.4 Verifier Tests
-- [ ] Test valid verifier output parses correctly
-- [ ] Test invalid output triggers violation
-- [ ] Test read-only guarantees
-- [ ] Test guidance generation
+#### 4.4 Verifier Tests ✅
+- [x] Test valid verifier output parses correctly
+- [x] Test invalid output triggers violation
+- [x] Test read-only guarantees (prohibition detection)
+- [x] Test guidance generation
+- [x] Test all prohibition categories
+- [x] Test verdict validation
+- [x] Test violation severity validation
 
-**File**: `test/verifierContract.test.ts`
+**File**: `test/verifierContract.test.ts` ✅ (36 tests)
+**Commit**: `7f7ddaa`
 
 ---
 
